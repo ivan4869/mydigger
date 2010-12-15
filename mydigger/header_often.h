@@ -18,7 +18,7 @@
 #include <vector>
 #include <utility>
 #include <omp.h>
-#include <assert.h>
+#include <cassert>
 
 using std::cin;
 using std::endl;
