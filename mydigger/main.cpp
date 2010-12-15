@@ -183,7 +183,6 @@ int digger (char fname[], unsigned juid_per_ip, float factor1, long long lifetim
   /* When `all' was used, make sure that we have one IP or more. */
   unsigned all = 0, old = 0;
   ofstream ferr(DBG_LOG);
-  //ofstream ipfout[TYPES];
   size_t pos = ofname.find_first_of(".");
   ofname = ofname.substr(0, pos);
   type0_1_5 = ofname + POSTFIX0_1_5;
