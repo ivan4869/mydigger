@@ -1,0 +1,28 @@
+This program is developed according to the CHAMELEON clustering algorithm.
+
+In using this program, first there are several constant numbers need to be 
+noticed. In application, user may need to adjust these constants in the 
+program. Of course, these constants can be changed to become input parameters,
+but in my experiments they are mostly don't need to be changed, so I just
+made them constants. These constants include:
+ 
+MAXSIZE -- maximum number of data points
+K_nearest -- k-nearest graph
+BC -- balance constraints in graph partition
+MINSIZE -- minimum size in graph partition
+
+following three constants relating to the clustering of 2-dimentional spatial
+data:
+WIDTH -- width of the 2-dimentional space
+HEIGHT -- height of the 2-dimentional spac
+DIAG -- diagonal distance of the 2-dimentional spac
+
+ALPHA -- This constant is related to the relative weight of closeness and 
+connections in the clustering goodness function:
+
+Once the above constants are set, the usage of the program is like this:
+"chameleon N fileName stopClusterNO"
+the meanning of each parameter is:
+N -- number of data points
+fileName -- name of the data file
+stopClusterNO -- cluster number when the cluster process stop
