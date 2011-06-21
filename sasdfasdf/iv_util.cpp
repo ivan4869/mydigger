@@ -32,10 +32,10 @@ namespace iv{
     }
   }
 
-  int stat(const string & fname, struct stat *fstat)
+  int stat(const string & fname, iv::stat_t *p_fstat)
   {
     int r;
-    if(-1 == (r=::_stat(fname.c_str(), fstat)))
+    if(-1 == (r=::_stat(fname.c_str(), p_fstat)))
       staterr();
     return r;
   }

@@ -92,7 +92,7 @@ int bits_get_high(struct bits *bits, unsigned int req_bits, unsigned int & retva
 void bits_flush(struct bits *bits);
 
 /**/
-int bgi_arc_extract_resource(char *ifname);
+int bgi_arc_extract_resource(const char *ifname);
 
 
 #endif

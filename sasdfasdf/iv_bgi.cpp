@@ -266,13 +266,24 @@ int bgi_arc_extract_resource(char *ifname)
   return result;
 }
 
+size_t dsc_compress(dsc_header_t *p_dsc_header, unsigned char *uncompr)
+{
+  size_t comprlen = 0, dec_counts=0;
+  
+  uncompr = (unsigned char *)(p_dsc_header+1);
+
+
+
+  return comprlen;
+}
+
 int bgi_arc_pack(char *ifname[], size_t cnt, char * ofname)
 {
   int result=0;
   arc_header_t arc_header;
-  struct stat ifstat;
+  iv::stat_t ifstat;
   int ifid, ofid;
-  unsigned long long offset=0;
+  unsigned offset=0;
   arc_entry_t *p_arc_entry, *p_arc_entries;// 
 
   if(!ifname || !cnt || !ofname){
@@ -287,12 +298,12 @@ int bgi_arc_pack(char *ifname[], size_t cnt, char * ofname)
   memset(p_arc_entries, '\0', sizeof(arc_entry_t)*cnt);
 
   for(size_t i=0; i<cnt; i++){
-    if(-1 == iv::stat(ifname, &ifstat)){
+    if(-1 == iv::stat(ifname[i], &ifstat)){
       delete [] p_arc_entries;
       return -1;
     }
-    strncpy(p_arc_entry->name, ifname[i], 15);
-    p_arc_entry->length = ifstat.st_size;
+    strncpy(p_arc_entry->name, ifname[i], 16);
+    p_arc_entry->length = ifstat.st_size; // uncompr size, need to update to compr size
     p_arc_entry++;
   }
 
@@ -303,77 +314,75 @@ int bgi_arc_pack(char *ifname[], size_t cnt, char * ofname)
     return -1;
   }
 
-  memcpy(arc_header->magic, "PackFile    ", 12);
-  arc_header->entries = cnt;
+  memcpy(arc_header.magic, "PackFile    ", 12);
+  arc_header.entries = cnt;
   iv::write(ofid, &arc_header, sizeof(arc_header));
 
-  arc_entries = arc_entry = new arc_entry_t[arc_header->entries];
+  p_arc_entries = p_arc_entry = new arc_entry_t[arc_header.entries];
+  memset(p_arc_entries, '\0', sizeof(arc_entry_t)*(arc_header.entries));
 
-  if(-1 == iv::write(ifid, arc_entry, sizeof(arc_entry_t)*arc_header->entries)){
-    delete p_arc_header;
-    delete p_arc_entries;
+  if(-1 == iv::write(ofid, p_arc_entry, sizeof(arc_entry_t)*arc_header.entries)){
+    delete [] p_arc_entries;
     return -1;
   }
 
-  offset = iv::tell(ofid); //密文开始的地方
+  offset = (unsigned)iv::tell(ofid); //密文开始的地方
   p_arc_entry = p_arc_entries;
-  for(size_t index=0; index < arc_header->entries; ++index){
-    dsc_header_t dsc_header;
-    unsigned char *compr, *uncompr;
+  for(size_t index=0; index < arc_header.entries; ++index){
+    dsc_header_t *p_dsc_header;
+    unsigned char *uncompr;
     unsigned int act_uncomprlen = 0;
 
-    ifid = iv::checkopen(ifname[index], _O_RDONLY|_O_BINARY);
-
-    uncompr = new unsigned char [];
-    if(!compr){
+    uncompr = new unsigned char [p_arc_entry->length];//uncomprlen
+    if(!uncompr){
       result = -1;
       break;
     }
-    iv::lseek(ifid, offset+arc_entry->offset);
-    if(-1 == iv::read(ifid, compr, arc_entry->length)){
-      delete [] compr;
-      result = -1;
-      break;
-    }
-    dsc_header = (dsc_header_t *) compr;
+    memset(uncompr, '\0', sizeof(p_arc_entry->length));
+    ifid = iv::checkopen(p_arc_entries[index].name, _O_RDONLY|_O_BINARY);
+    iv::read(ifid, uncompr, p_arc_entry->length);
 
-    if(!memcmp(dsc_header->magic, "DSC FORMAT 1.00", 16)){
-      uncompr = (unsigned char *) new unsigned char[dsc_header->uncomprlen];
-      if(!uncompr){
-        delete [] compr;
-        result = -1;
-        break;
-      }
-
-      act_uncomprlen = dsc_decompress(dsc_header, arc_entry->length, uncompr, dsc_header->uncomprlen);
-      if(act_uncomprlen != dsc_header->uncomprlen){
+    if(!memcmp(uncompr, "BurikoCompil", 16)){
+      p_dsc_header = (dsc_header_t *) new unsigned char[p_arc_entry->length+sizeof(dsc_header_t)];
+      if(!p_dsc_header){
         delete [] uncompr;
-        delete [] compr;
         result = -1;
         break;
       }
+    //initkey(&p_dsc_header->key);
+      p_dsc_header->uncomprlen = p_arc_entry->length;
+      memcpy(p_dsc_header->magic, "DSC FORMAT 1.00", 16);
 
       char fname[32] = {'0'};
-      memcpy(fname, arc_entry->name, sizeof(fname)-1);
-      iv::write_file(&fname[0], uncompr, act_uncomprlen);
+      memcpy(fname, p_arc_entry->name, sizeof(fname)-1);
 
+      p_arc_entry->length = dsc_compress(p_dsc_header, uncompr);
+      p_arc_entry->offset = (unsigned)iv::tell(ofid)-offset;
+
+      delete [] p_dsc_header;
       delete [] uncompr;
-      delete [] compr;
     }
     else{
       char unknown[32] = {'0'};
 
-      memcpy(unknown, dsc_header->magic, 16);
+      memcpy(unknown, p_dsc_header->magic, 16);
       cerr << "Unknown header was found :" << unknown << endl;
 
-      delete [] compr;
+      delete [] uncompr;
     }
-
-    arc_entry++;
+    
+    if(-1 == iv::write(ofid, p_dsc_header, p_arc_entry->length+sizeof(dsc_header_t))){
+      delete [] uncompr;
+      result = -1;
+      break;
+    }
+    p_arc_entry++;
   }//for(size_t index=0; index < arc_header->entries; ++index)
 
-  delete [] arc_entries;
-  delete arc_header;
+  iv::lseek(ofid, offset);
+  iv::write(ofid, p_arc_entries, sizeof(arc_entry_t)*arc_header.entries);
+
+  delete [] p_arc_entries;
 
   return 0;
 }

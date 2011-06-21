@@ -44,6 +44,8 @@ using std::wstring;
 using std::multimap;
 
 namespace iv{
+  typedef struct _stat stat_t;
+
   inline void errexit(const string msg)
   {
     cerr << msg << endl;
@@ -55,7 +57,7 @@ namespace iv{
     cerr << msg << endl;
     return ;
   }
-  int stat(const string & fname, struct stat *fstat);
+  int stat(const string & fname, stat_t *fstat);
   int checkopen(const string & fname, int flag, int pmod=_S_IREAD);
   int open_or_exit(const string & fname, int flag, int pmod=_S_IREAD);
   int close(int fd);
